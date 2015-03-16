@@ -55,7 +55,7 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
     property_get("ro.bootloader", bootloader);
 
     if (strstr(bootloader, "N910G")) {
-        /* trltecan These values are taken from trltexx and edited for the 910G FIXME */
+        /* trltedt These values are taken from trltexx and edited for the 910G FIXME */
         property_set("ro.build.fingerprint", "samsung/trltedt/trlte:5.0.2/KTU84P/N910GDTU1ANK3:user/release-keys");
         property_set("ro.build.description", "trltedt-user 5.0.2 KTU84P N910GDTU1ANK3 release-keys");
         property_set("ro.product.model", "SM-N910G");
