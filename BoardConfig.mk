@@ -15,7 +15,7 @@
 # inherit from common trlte
 -include device/samsung/trlte-common/BoardConfigCommon.mk
 
-TARGET_OTA_ASSERT_DEVICE := trltexx
+TARGET_OTA_ASSERT_DEVICE := trltexx,trltedt
 
 # Partitions
 BOARD_FLASH_BLOCK_SIZE := 262144
