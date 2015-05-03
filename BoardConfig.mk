@@ -28,6 +28,9 @@ BOARD_USERDATAIMAGE_PARTITION_SIZE := 27019685888 #910T uses: 26558312448
 # Kernel
 TARGET_KERNEL_VARIANT_CONFIG := apq8084_sec_trlte_eur_defconfig
 
+# Camera
+TARGET_FIXUP_PREVIEW := true
+
 # Init
 TARGET_INIT_VENDOR_LIB := libinit_msm
 TARGET_LIBINIT_DEFINES_FILE := device/samsung/trltexx/init/init_trlte.c
