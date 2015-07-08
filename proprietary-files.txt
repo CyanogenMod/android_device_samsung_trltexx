@@ -5,7 +5,7 @@ vendor/firmware/bcm43569A0.hcd
 vendor/firmware/bcm43569A1.hcd
 
 # GPS
--app/com.qualcomm.location.apk
+-priv-app/com.qualcomm.location/com.qualcomm.location.apk
 bin/gsiff_daemon
 etc/permissions/com.qualcomm.location.xml
 vendor/lib/hw/flp.default.so
