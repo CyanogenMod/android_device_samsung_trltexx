@@ -19,38 +19,49 @@ package com.android.internal.telephony;
 import static com.android.internal.telephony.RILConstants.*;
 
 import android.content.Context;
+import android.media.AudioManager;
 import android.telephony.Rlog;
+import android.os.AsyncResult;
 import android.os.Message;
 import android.os.Parcel;
+import android.os.SystemProperties;
 import android.telephony.PhoneNumberUtils;
 import android.telephony.SignalStrength;
+import com.android.internal.telephony.cdma.CdmaInformationRecords;
+import com.android.internal.telephony.cdma.CdmaInformationRecords.CdmaSignalInfoRec;
+import com.android.internal.telephony.cdma.SignalToneUtil;
 import com.android.internal.telephony.uicc.IccCardApplicationStatus;
 import com.android.internal.telephony.uicc.IccCardStatus;
 import java.util.ArrayList;
 import java.util.Collections;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+
 /**
- * RIL customization for Galaxy Note 4 (GSM) LTE devices
+ * RIL customization for Galaxy S5 (GSM) LTE devices
  *
  * {@hide}
  */
 public class trlteRIL extends RIL {
+	
+	private AudioManager mAudioManager;
 
-    private static final int RIL_REQUEST_DIAL_EMERGENCY = 10016;
-    private static final int RIL_UNSOL_DEVICE_READY_NOTI = 11008;
-    private static final int RIL_UNSOL_AM = 11010;
-    private static final int RIL_UNSOL_WB_AMR_STATE = 11017;
-    private static final int RIL_UNSOL_SRVCC_HANDOVER = 11029;
-    private static final int RIL_REQUEST_ACTIVATE_DATA_CALL = 11037;
+    private static final int RIL_REQUEST_DIAL_EMERGENCY = 10001;
+    private static final int RIL_UNSOL_ON_SS_LL = 11055;
+
+    private boolean mIsGsm = false;
+
+    public trlteRIL(Context context, int networkMode, int cdmaSubscription) {
+        super(context, networkMode, cdmaSubscription, null);
+        mAudioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
+    }
 
     public trlteRIL(Context context, int preferredNetworkType,
             int cdmaSubscription, Integer instanceId) {
-        this(context, preferredNetworkType, cdmaSubscription);
-	}
-
-    public trlteRIL(Context context, int networkMode, int cdmaSubscription) {
-        super(context, networkMode, cdmaSubscription);
-        mQANElements = 6;
+        super(context, preferredNetworkType, cdmaSubscription, instanceId);
+        mAudioManager = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Override
@@ -84,21 +95,9 @@ public class trlteRIL extends RIL {
     }
 
     @Override
-    public void
-    acceptCall (Message result) {
-        RILRequest rr
-                = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
-
-        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-		rr.mParcel.writeInt(1);
-		rr.mParcel.writeInt(0);
-        send(rr);
-    }
-
-    @Override
     protected Object
     responseIccCardStatus(Parcel p) {
-        IccCardApplicationStatus appStatus;
+        IccCardApplicationStatus appStatus = null;
 
         IccCardStatus cardStatus = new IccCardStatus();
         cardStatus.setCardState(p.readInt());
@@ -133,6 +132,40 @@ public class trlteRIL extends RIL {
 
             cardStatus.mApplications[i] = appStatus;
         }
+
+        // For Sprint LTE only SIM
+        if (appStatus != null
+                && numApplications == 1
+                && !mIsGsm
+                && appStatus.app_type == appStatus.AppTypeFromRILInt(2)) {
+            cardStatus.mApplications = new IccCardApplicationStatus[3];
+            cardStatus.mApplications[0] = appStatus;
+            cardStatus.mGsmUmtsSubscriptionAppIndex = 0;
+            cardStatus.mCdmaSubscriptionAppIndex = 1;
+            cardStatus.mImsSubscriptionAppIndex = 2;
+
+            IccCardApplicationStatus appStatus2 = new IccCardApplicationStatus();
+            appStatus2.app_type       = appStatus2.AppTypeFromRILInt(4); // csim state
+            appStatus2.app_state      = appStatus.app_state;
+            appStatus2.perso_substate = appStatus.perso_substate;
+            appStatus2.aid            = appStatus.aid;
+            appStatus2.app_label      = appStatus.app_label;
+            appStatus2.pin1_replaced  = appStatus.pin1_replaced;
+            appStatus2.pin1           = appStatus.pin1;
+            appStatus2.pin2           = appStatus.pin2;
+            cardStatus.mApplications[cardStatus.mCdmaSubscriptionAppIndex] = appStatus2;
+
+            IccCardApplicationStatus appStatus3 = new IccCardApplicationStatus();
+            appStatus3.app_type       = appStatus3.AppTypeFromRILInt(5); // ims state
+            appStatus3.app_state      = appStatus.app_state;
+            appStatus3.perso_substate = appStatus.perso_substate;
+            appStatus3.aid            = appStatus.aid;
+            appStatus3.app_label      = appStatus.app_label;
+            appStatus3.pin1_replaced  = appStatus.pin1_replaced;
+            appStatus3.pin1           = appStatus.pin1;
+            appStatus3.pin2           = appStatus.pin2;
+            cardStatus.mApplications[cardStatus.mImsSubscriptionAppIndex] = appStatus3;
+        }
         return cardStatus;
     }
 
@@ -163,16 +196,18 @@ public class trlteRIL extends RIL {
             dc.als = p.readInt();
             voiceSettings = p.readInt();
             dc.isVoice = (0 != voiceSettings);
-            boolean isVideo = (0 != p.readInt());   // Samsung CallDetails
-            int call_type = p.readInt();            // Samsung CallDetails
-            int call_domain = p.readInt();          // Samsung CallDetails
-            String csv = p.readString();            // Samsung CallDetails
+            if (mIsGsm) {
+                boolean isVideo;
+                int call_type = p.readInt();            // Samsung CallDetails
+                int call_domain = p.readInt();          // Samsung CallDetails
+                String csv = p.readString();            // Samsung CallDetails
+            }
             dc.isVoicePrivacy = (0 != p.readInt());
             dc.number = p.readString();
             int np = p.readInt();
             dc.numberPresentation = DriverCall.presentationFromCLIP(np);
             dc.name = p.readString();
-            dc.namePresentation = p.readInt();
+            dc.namePresentation = DriverCall.presentationFromCLIP(p.readInt());
             int uusInfoPresent = p.readInt();
             if (uusInfoPresent == 1) {
                 dc.uusInfo = new UUSInfo();
@@ -235,7 +270,6 @@ public class trlteRIL extends RIL {
         int lteCqi = p.readInt();
         int tdScdmaRscp = p.readInt();
         // constructor sets default true, makeSignalStrengthFromRilParcel does not set it
-        boolean isGsm = true;
 
         if ((lteSignalStrength & 0xff) == 255 || lteSignalStrength == 99) {
             lteSignalStrength = 99;
@@ -253,45 +287,54 @@ public class trlteRIL extends RIL {
                     " evdoEcio: " + evdoEcio + " evdoSnr:" + evdoSnr +
                     " lteSignalStrength:" + lteSignalStrength + " lteRsrp:" + lteRsrp +
                     " lteRsrq:" + lteRsrq + " lteRssnr:" + lteRssnr + " lteCqi:" + lteCqi +
-                    " tdScdmaRscp:" + tdScdmaRscp + " isGsm:" + (isGsm ? "true" : "false"));
+                    " tdScdmaRscp:" + tdScdmaRscp + " isGsm:" + (mIsGsm ? "true" : "false"));
 
         return new SignalStrength(gsmSignalStrength, gsmBitErrorRate, cdmaDbm, cdmaEcio, evdoDbm,
                 evdoEcio, evdoSnr, lteSignalStrength, lteRsrp, lteRsrq, lteRssnr, lteCqi,
-                tdScdmaRscp, isGsm);
+                tdScdmaRscp, mIsGsm);
+    }
+
+    @Override
+    public void setPhoneType(int phoneType) {
+        super.setPhoneType(phoneType);
+        mIsGsm = (phoneType != RILConstants.CDMA_PHONE);
     }
 
     @Override
     protected void
     processUnsolicited (Parcel p) {
         Object ret;
-        int dataPosition = p.dataPosition(); // save off position within the Parcel
+        int dataPosition = p.dataPosition();
         int response = p.readInt();
+        int newResponse = response;
 
         switch(response) {
-            case RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED:
-                ret = responseVoid(p);
+            case RIL_UNSOL_ON_SS_LL:
+                newResponse = RIL_UNSOL_ON_SS;
                 break;
-            case RIL_UNSOL_DEVICE_READY_NOTI:
-                ret = responseVoid(p);
-                break;
-            case RIL_UNSOL_AM:
-                ret = responseString(p);
-                break;
-            case RIL_UNSOL_WB_AMR_STATE:
-                ret = responseInts(p);
-                break;
-            case RIL_UNSOL_SRVCC_HANDOVER:
-                ret = responseVoid(p);
-                break;
-            default:
-                // Rewind the Parcel
-                p.setDataPosition(dataPosition);
-
-                // Forward responses that we are not overriding to the super class
-                super.processUnsolicited(p);
-                return;
         }
+        if (newResponse != response) {
+            p.setDataPosition(dataPosition);
+            p.writeInt(newResponse);
+        }
+        p.setDataPosition(dataPosition);
+        super.processUnsolicited(p);
     }
+
+    @Override
+    public void
+    acceptCall (Message result) {
+        RILRequest rr
+                = RILRequest.obtain(RIL_REQUEST_ANSWER, result);
+
+        rr.mParcel.writeInt(1);
+        rr.mParcel.writeInt(0);
+
+        if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
+
+        send(rr);
+    }
+
 
     private void
     dialEmergencyCall(String address, int clirMode, Message result) {
@@ -308,5 +351,149 @@ public class trlteRIL extends RIL {
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
 
         send(rr);
+    }
+
+    @Override
+    protected RILRequest
+    processSolicited (Parcel p) {
+        int serial, error;
+        boolean found = false;
+        int dataPosition = p.dataPosition(); // save off position within the Parcel
+        serial = p.readInt();
+        error = p.readInt();
+        RILRequest rr = null;
+        /* Pre-process the reply before popping it */
+        synchronized (mRequestList) {
+            RILRequest tr = mRequestList.get(serial);
+            if (tr != null && tr.mSerial == serial) {
+                if (error == 0 || p.dataAvail() > 0) {
+                    try {switch (tr.mRequest) {
+                            /* Get those we're interested in */
+                        case RIL_REQUEST_DATA_REGISTRATION_STATE:
+                            rr = tr;
+                            break;
+                    }} catch (Throwable thr) {
+                        // Exceptions here usually mean invalid RIL responses
+                        if (tr.mResult != null) {
+                            AsyncResult.forMessage(tr.mResult, null, thr);
+                            tr.mResult.sendToTarget();
+                        }
+                        return tr;
+                    }
+                }
+            }
+        }
+        if (rr == null) {
+            /* Nothing we care about, go up */
+            p.setDataPosition(dataPosition);
+            // Forward responses that we are not overriding to the super class
+            return super.processSolicited(p);
+        }
+        rr = findAndRemoveRequestFromList(serial);
+        if (rr == null) {
+            return rr;
+        }
+        Object ret = null;
+        if (error == 0 || p.dataAvail() > 0) {
+            switch (rr.mRequest) {
+                case RIL_REQUEST_DATA_REGISTRATION_STATE: ret = responseDataRegistrationState(p); break;
+                default:
+                    throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
+            }
+            //break;
+        }
+        if (RILJ_LOGD) riljLog(rr.serialString() + "< " + requestToString(rr.mRequest)
+                               + " " + retToString(rr.mRequest, ret));
+        if (rr.mResult != null) {
+            AsyncResult.forMessage(rr.mResult, ret, null);
+            rr.mResult.sendToTarget();
+        }
+        return rr;
+    }
+
+    private Object
+    responseDataRegistrationState(Parcel p) {
+        String response[] = (String[])responseStrings(p);
+        /* DANGER WILL ROBINSON
+         * In some cases from Vodaphone we are receiving a RAT of 102
+         * while in tunnels of the metro. Lets Assume that if we
+         * receive 102 we actually want a RAT of 2 for EDGE service */
+        if (response.length > 4 &&
+            response[0].equals("1") &&
+            response[3].equals("102")) {
+            response[3] = "2";
+        }
+        return response;
+    }
+    /**
+     * Set audio parameter "wb_amr" for HD-Voice (Wideband AMR).
+     *
+     * @param state: 0 = unsupported, 1 = supported.
+     */
+    private void setWbAmr(int state) {
+        if (state == 1) {
+            Rlog.d(RILJ_LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=on");
+            mAudioManager.setParameters("wide_voice_enable=true");
+        }else if (state == 0) {
+            Rlog.d(RILJ_LOG_TAG, "setWbAmr(): setting audio parameter - wb_amr=off");
+            mAudioManager.setParameters("wide_voice_enable=false");
+        }
+    }
+
+    // Workaround for Samsung CDMA "ring of death" bug:
+    //
+    // Symptom: As soon as the phone receives notice of an incoming call, an
+    // audible "old fashioned ring" is emitted through the earpiece and
+    // persists through the duration of the call, or until reboot if the call
+    // isn't answered.
+    //
+    // Background: The CDMA telephony stack implements a number of "signal info
+    // tones" that are locally generated by ToneGenerator and mixed into the
+    // voice call path in response to radio RIL_UNSOL_CDMA_INFO_REC requests.
+    // One of these tones, IS95_CONST_IR_SIG_IS54B_L, is requested by the
+    // radio just prior to notice of an incoming call when the voice call
+    // path is muted. CallNotifier is responsible for stopping all signal
+    // tones (by "playing" the TONE_CDMA_SIGNAL_OFF tone) upon receipt of a
+    // "new ringing connection", prior to unmuting the voice call path.
+    //
+    // Problem: CallNotifier's incoming call path is designed to minimize
+    // latency to notify users of incoming calls ASAP. Thus,
+    // SignalInfoTonePlayer requests are handled asynchronously by spawning a
+    // one-shot thread for each. Unfortunately the ToneGenerator API does
+    // not provide a mechanism to specify an ordering on requests, and thus,
+    // unexpected thread interleaving may result in ToneGenerator processing
+    // them in the opposite order that CallNotifier intended. In this case,
+    // playing the "signal off" tone first, followed by playing the "old
+    // fashioned ring" indefinitely.
+    //
+    // Solution: An API change to ToneGenerator is required to enable
+    // SignalInfoTonePlayer to impose an ordering on requests (i.e., drop any
+    // request that's older than the most recent observed). Such a change,
+    // or another appropriate fix should be implemented in AOSP first.
+    //
+    // Workaround: Intercept RIL_UNSOL_CDMA_INFO_REC requests from the radio,
+    // check for a signal info record matching IS95_CONST_IR_SIG_IS54B_L, and
+    // drop it so it's never seen by CallNotifier. If other signal tones are
+    // observed to cause this problem, they should be dropped here as well.
+    @Override
+    protected void notifyRegistrantsCdmaInfoRec(CdmaInformationRecords infoRec) {
+        final int response = RIL_UNSOL_CDMA_INFO_REC;
+
+        if (infoRec.record instanceof CdmaSignalInfoRec) {
+            CdmaSignalInfoRec sir = (CdmaSignalInfoRec) infoRec.record;
+            if (sir != null
+                    && sir.isPresent
+                    && sir.signalType == SignalToneUtil.IS95_CONST_IR_SIGNAL_IS54B
+                    && sir.alertPitch == SignalToneUtil.IS95_CONST_IR_ALERT_MED
+                    && sir.signal == SignalToneUtil.IS95_CONST_IR_SIG_IS54B_L) {
+
+                Rlog.d(RILJ_LOG_TAG, "Dropping \"" + responseToString(response) + " "
+                        + retToString(response, sir)
+                        + "\" to prevent \"ring of death\" bug.");
+                return;
+            }
+        }
+
+        super.notifyRegistrantsCdmaInfoRec(infoRec);
     }
 }
