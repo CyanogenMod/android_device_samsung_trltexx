@@ -1,13 +1,13 @@
 # Bluetooth firmware
-# NOT PRESENT ANYMORE vendor/firmware/BT_FW_BCM4358A1_001.002.005.0032.0066.hcd
-# NOT PRESENT ANYMORE vendor/firmware/bcm43569.hcd
-# NOT PRESENT ANYMORE vendor/firmware/bcm43569A0.hcd
-# NOT PRESENT ANYMORE vendor/firmware/bcm43569A1.hcd
+vendor/firmware/BT_FW_BCM4358A1_001.002.005.0032.0066.hcd
+vendor/firmware/bcm43569.hcd
+vendor/firmware/bcm43569A0.hcd
+vendor/firmware/bcm43569A1.hcd
 # NEW BLUETOOTH FOUND
-vendor/firmware/bcm4358A0_V0033.0000.hcd
-vendor/firmware/bcm4358A0_V0033.0000_wisol.hcd
-vendor/firmware/bcm4358A1_V0054.0095.hcd
-vendor/firmware/bcm4358A1_V0054.0095_wisol.hcd
+#vendor/firmware/bcm4358A0_V0033.0000.hcd
+#vendor/firmware/bcm4358A0_V0033.0000_wisol.hcd
+#vendor/firmware/bcm4358A1_V0054.0095.hcd
+#vendor/firmware/bcm4358A1_V0054.0095_wisol.hcd
 
 
 # GPS
