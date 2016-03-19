@@ -5,7 +5,6 @@ vendor/firmware/bcm43569A0.hcd
 vendor/firmware/bcm43569A1.hcd
 
 # GPS
--priv-app/com.qualcomm.location/com.qualcomm.location.apk
 bin/gsiff_daemon
 etc/permissions/com.qualcomm.location.xml
 vendor/lib/hw/flp.default.so
@@ -35,17 +34,13 @@ vendor/lib/libqmiservices.so
 
 # Radio
 bin/efsks
-bin/ds_fmc_appd
 bin/ks
 bin/mdm_helper
 bin/mdm_helper_proxy
 bin/qcks
 bin/qmuxd
-bin/rfs_access
 bin/rild
-bin/rmt_storage
 bin/rmnetcli
-lib/libmdmdetect.so
 lib/libreference-ril.so
 lib/libril.so
 lib/librmnetctl.so
