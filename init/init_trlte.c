@@ -56,15 +56,15 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
 
     if (strstr(bootloader, "N910G")) {
         /* trltedt These values are taken from trltexx and edited for the 910G FIXME */
-        property_set("ro.build.fingerprint", "samsung/trltedt/trlte:5.0.2/KTU84P/N910GDTU1ANK3:user/release-keys");
-        property_set("ro.build.description", "trltedt-user 5.0.2 KTU84P N910GDTU1ANK3 release-keys");
+        property_set("ro.build.fingerprint", "samsung/trltedt/trlte:6.0/MRA58K/N910GDTU1ANK3:user/release-keys");
+        property_set("ro.build.description", "trltedt-user 6.0 MRA58K N910GDTU1ANK3 release-keys");
         property_set("ro.product.model", "SM-N910G");
         property_set("ro.product.device", "trlte");
         gsm_properties();
     } else {
         /* trltexx */
-        property_set("ro.build.fingerprint", "samsung/trltexx/trltexx:5.0.2/LRX22G/N910TUVU1ANIH:user/release-keys");
-        property_set("ro.build.description", "trltexx-user 5.0.2 LRX22G N910TUVU1ANIH release-keys");
+        property_set("ro.build.fingerprint", "samsung/trltexx/trltexx:6.0/MRA58K/N910TUVU1ANIH:user/release-keys");
+        property_set("ro.build.description", "trltexx-user 6.0 MRA58K N910TUVU1ANIH release-keys");
         property_set("ro.product.model", "SM-N910F");
         property_set("ro.product.device", "trltexx");
         gsm_properties();
