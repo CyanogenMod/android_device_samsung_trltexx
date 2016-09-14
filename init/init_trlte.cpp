@@ -1,6 +1,5 @@
 /*
    Copyright (c) 2013, The Linux Foundation. All rights reserved.
-
    Redistribution and use in source and binary forms, with or without
    modification, are permitted provided that the following conditions are
    met:
@@ -13,7 +12,6 @@
     * Neither the name of The Linux Foundation nor the names of its
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
-
    THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
    WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
@@ -34,8 +32,9 @@
 #include "property_service.h"
 #include "log.h"
 #include "util.h"
+#include <sys/system_properties.h>
 
-#include "init_msm.h"
+#define ISMATCH(a,b)    (!strncmp(a,b,PROP_VALUE_MAX))
 
 void gsm_properties()
 {
@@ -43,17 +42,12 @@ void gsm_properties()
     property_set("ro.telephony.default_network", "9");
 }
 
-void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *board_type)
-{
+void init_variant_properties() {
     char platform[PROP_VALUE_MAX];
     char bootloader[PROP_VALUE_MAX];
     char device[PROP_VALUE_MAX];
     char devicename[PROP_VALUE_MAX];
     int rc;
-
-    UNUSED(msm_id);
-    UNUSED(msm_ver);
-    UNUSED(board_type);
 
     rc = property_get("ro.board.platform", platform);
     if (!rc || !ISMATCH(platform, ANDROID_TARGET))
@@ -70,8 +64,8 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
         gsm_properties();
     } else {
         /* trltexx */
-        property_set("ro.build.fingerprint", "samsung/trltexx/trltexx:6.0.1/MHC19J/N910FXXU1COL2:user/release-keys");
-        property_set("ro.build.description", "trltexx-user 6.0.1 MHC19J N910FXXU1COL2 release-keys");
+        property_set("ro.build.fingerprint", "samsung/trltexx/trlte:6.0.1/MMB29M/N910FXXU1DPD3:user/test-keys");
+        property_set("ro.build.description", "trltexx-user 6.0.1 MMB29M N910FXXU1DPD3 release-keys");
         property_set("ro.product.model", "SM-N910F");
         property_set("ro.product.device", "trltexx");
         gsm_properties();
@@ -80,4 +74,9 @@ void init_msm_properties(unsigned long msm_id, unsigned long msm_ver, char *boar
     property_get("ro.product.device", device);
     strlcpy(devicename, device, sizeof(devicename));
     INFO("Found bootloader id %s setting build properties for %s device\n", bootloader, devicename);
+}
+
+
+void vendor_load_properties() {
+    init_variant_properties();
 }
